@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>習慣トラッカー</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --primary: #4f8ef7;
+      --primary-dark: #3a72d8;
+      --success: #34c77b;
+      --danger: #f05252;
+      --text: #1a1a2e;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --streak: #f59e0b;
+      --radius: 12px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    header {
+      max-width: 640px;
+      margin: 0 auto 28px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    .today-badge {
+      display: inline-block;
+      margin-top: 10px;
+      background: var(--primary);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* カード */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* 習慣追加フォーム */
+    .add-form {
+      padding: 16px 20px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-form input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s;
+      color: var(--text);
+    }
+
+    .add-form input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      padding: 6px 8px;
+      font-size: 1rem;
+    }
+
+    .btn-ghost:hover { color: var(--danger); }
+
+    /* 習慣リスト */
+    #habit-list {
+      list-style: none;
+    }
+
+    .habit-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+      transition: background 0.1s;
+    }
+
+    .habit-item:last-child { border-bottom: none; }
+    .habit-item:hover { background: #fafafa; }
+
+    .check-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+
+    .check-btn.done {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    .habit-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .habit-name {
+      font-size: 0.97rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .habit-name.done {
+      color: var(--text-muted);
+      text-decoration: line-through;
+    }
+
+    .habit-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .streak-badge {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--streak);
+    }
+
+    .streak-badge.active::before { content: "🔥 "; }
+    .streak-badge.zero { color: var(--text-muted); }
+
+    /* 週間グリッド */
+    .weekly-grid {
+      padding: 8px 20px 16px;
+    }
+
+    .week-row {
+      display: grid;
+      grid-template-columns: 1fr repeat(7, 28px);
+      gap: 4px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .week-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 8px;
+    }
+
+    .week-day-header {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .week-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--border);
+    }
+
+    .week-dot.done {
+      background: var(--success);
+    }
+
+    .week-dot.today {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    /* 統計 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .stat-item {
+      padding: 16px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* 空状態 */
+    .empty {
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* タブ切り替え */
+    .tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>習慣トラッカー</h1>
+  <p class="subtitle">毎日の小さな積み重ねが大きな変化を生む</p>
+  <span class="today-badge" id="today-label"></span>
+</header>
+
+<main>
+
+  <!-- 統計カード -->
+  <div class="card">
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">習慣数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-today">0</div>
+        <div class="stat-label">今日の達成</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-best-streak">0</div>
+        <div class="stat-label">最長ストリーク</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 今日の習慣 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">今日の習慣</span>
+    </div>
+    <div class="add-form">
+      <input type="text" id="new-habit-input" placeholder="新しい習慣を追加..." maxlength="40">
+      <button class="btn btn-primary" id="add-btn">追加</button>
+    </div>
+    <ul id="habit-list"></ul>
+  </div>
+
+  <!-- 週間進捗 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">週間進捗</span>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="week">週</button>
+        <button class="tab-btn" data-tab="month">月</button>
+      </div>
+    </div>
+    <div id="tab-week" class="tab-panel active">
+      <div class="weekly-grid" id="weekly-grid"></div>
+    </div>
+    <div id="tab-month" class="tab-panel">
+      <div class="weekly-grid" id="monthly-grid"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ---- データ管理 ----
+  const STORAGE_KEY = "habit_tracker_v1";
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : { habits: [], records: {} };
+    } catch {
+      return { habits: [], records: {} };
+    }
+  }
+
+  function saveData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  let data = loadData();
+
+  // ---- 日付ユーティリティ ----
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function dateStr(d) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  function addDays(d, n) {
+    const r = new Date(d);
+    r.setDate(r.getDate() + n);
+    return r;
+  }
+
+  function calcStreak(habitId) {
+    let streak = 0;
+    let d = new Date();
+    while (true) {
+      const ds = dateStr(d);
+      const done = (data.records[ds] || []).includes(habitId);
+      if (done) {
+        streak++;
+        d = addDays(d, -1);
+      } else {
+        // 今日がまだ未達成でも昨日から継続中かチェック
+        if (ds === todayStr()) {
+          d = addDays(d, -1);
+          const ds2 = dateStr(d);
+          if ((data.records[ds2] || []).includes(habitId)) {
+            d = addDays(d, -1);
+            continue;
+          }
+        }
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function calcBestStreak(habitId) {
+    if (!data.records || Object.keys(data.records).length === 0) return 0;
+    const dates = Object.keys(data.records).sort();
+    let best = 0, current = 0;
+    let prev = null;
+    for (const ds of dates) {
+      if ((data.records[ds] || []).includes(habitId)) {
+        if (prev) {
+          const diff = (new Date(ds) - new Date(prev)) / 86400000;
+          current = diff === 1 ? current + 1 : 1;
+        } else {
+          current = 1;
+        }
+        best = Math.max(best, current);
+        prev = ds;
+      } else {
+        prev = null;
+        current = 0;
+      }
+    }
+    return best;
+  }
+
+  // ---- レンダリング ----
+  function render() {
+    renderHeader();
+    renderStats();
+    renderHabitList();
+    renderWeeklyGrid();
+    renderMonthlyGrid();
+  }
+
+  function renderHeader() {
+    const now = new Date();
+    const days = ["日", "月", "火", "水", "木", "金", "土"];
+    const label = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${days[now.getDay()]}）`;
+    document.getElementById("today-label").textContent = label;
+  }
+
+  function renderStats() {
+    const today = todayStr();
+    const todayDone = (data.records[today] || []).length;
+    const bestStreak = data.habits.reduce((max, h) => Math.max(max, calcBestStreak(h.id)), 0);
+    document.getElementById("stat-total").textContent = data.habits.length;
+    document.getElementById("stat-today").textContent = `${todayDone}/${data.habits.length}`;
+    document.getElementById("stat-best-streak").textContent = bestStreak;
+  }
+
+  function renderHabitList() {
+    const list = document.getElementById("habit-list");
+    const today = todayStr();
+    const todayDone = data.records[today] || [];
+
+    if (data.habits.length === 0) {
+      list.innerHTML = '<li class="empty">習慣を追加してスタートしましょう！</li>';
+      return;
+    }
+
+    list.innerHTML = data.habits.map(habit => {
+      const done = todayDone.includes(habit.id);
+      const streak = calcStreak(habit.id);
+      const streakClass = streak > 0 ? "active" : "zero";
+      const streakText = streak > 0 ? `${streak}日連続` : "0日";
+      return `
+        <li class="habit-item" data-id="${habit.id}">
+          <button class="check-btn ${done ? "done" : ""}" onclick="toggleHabit(${habit.id})" title="${done ? "未達成に戻す" : "達成する"}">
+            ${done ? "✓" : ""}
+          </button>
+          <div class="habit-info">
+            <div class="habit-name ${done ? "done" : ""}">${escHtml(habit.name)}</div>
+            <div class="habit-meta">
+              <span class="streak-badge ${streakClass}">${streakText}</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost" onclick="deleteHabit(${habit.id})" title="削除">✕</button>
+        </li>`;
+    }).join("");
+  }
+
+  function renderWeeklyGrid() {
+    const grid = document.getElementById("weekly-grid");
+    if (data.habits.length === 0) {
+      grid.innerHTML = '<p class="empty">習慣を追加すると進捗が表示されます</p>';
+      return;
+    }
+
+    const today = new Date();
+    const dates = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
+    const todayStr_ = todayStr();
+
+    let html = '<div class="week-row">';
+    html += '<div class="week-label"></div>';
+    const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+    dates.forEach(d => {
+      html += `<div class="week-day-header">${dayLabels[d.getDay()]}<br>${d.getDate()}</div>`;
+    });
+    html += "</div>";
+
+    data.habits.forEach(habit => {
+      html += '<div class="week-row">';
+      html += `<div class="week-label" title="${escHtml(habit.name)}">${escHtml(habit.name)}</div>`;
+      dates.forEach(d => {
+        const ds = dateStr(d);
+        const done = (data.records[ds] || []).includes(habit.id);
+        const isToday = ds === todayStr_;
+        html += `<div class="week-dot ${done ? "done" : ""} ${isToday ? "today" : ""}" title="${ds}"></div>`;
+      });
+      html += "</div>";
+    });
+
+    grid.innerHTML = html;
+  }
+
+  function renderMonthlyGrid() {
+    const grid = document.getElementById("monthly-grid");
+    if (data.habits.length === 0) {
+      grid.innerHTML = "";
+      return;
+    }
+
+    const today = new Date();
+    const days = Array.from({ length: 28 }, (_, i) => addDays(today, i - 27));
+    const todayStr_ = todayStr();
+    const weeks = [];
+    for (let i = 0; i < 28; i += 7) weeks.push(days.slice(i, i + 7));
+
+    let html = "";
+    data.habits.forEach(habit => {
+      html += `<div style="margin-bottom:10px"><div class="week-label" style="font-weight:600;margin-bottom:4px">${escHtml(habit.name)}</div>`;
+      html += '<div style="display:flex;gap:3px;flex-wrap:wrap">';
+      days.forEach(d => {
+        const ds = dateStr(d);
+        const done = (data.records[ds] || []).includes(habit.id);
+        const isToday = ds === todayStr_;
+        html += `<div class="week-dot ${done ? "done" : ""} ${isToday ? "today" : ""}" title="${ds}" style="width:20px;height:20px;border-radius:4px"></div>`;
+      });
+      html += "</div></div>";
+    });
+
+    grid.innerHTML = html;
+  }
+
+  // ---- アクション ----
+  function addHabit() {
+    const input = document.getElementById("new-habit-input");
+    const name = input.value.trim();
+    if (!name) return;
+
+    const id = Date.now();
+    data.habits.push({ id, name, createdAt: todayStr() });
+    saveData(data);
+    input.value = "";
+    render();
+  }
+
+  function toggleHabit(id) {
+    const today = todayStr();
+    if (!data.records[today]) data.records[today] = [];
+    const idx = data.records[today].indexOf(id);
+    if (idx === -1) {
+      data.records[today].push(id);
+    } else {
+      data.records[today].splice(idx, 1);
+    }
+    saveData(data);
+    render();
+  }
+
+  function deleteHabit(id) {
+    const habit = data.habits.find(h => h.id === id);
+    if (!habit) return;
+    if (!confirm(`「${habit.name}」を削除しますか？`)) return;
+    data.habits = data.habits.filter(h => h.id !== id);
+    // 記録も削除
+    for (const ds in data.records) {
+      data.records[ds] = data.records[ds].filter(hid => hid !== id);
+    }
+    saveData(data);
+    render();
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // ---- イベント ----
+  document.getElementById("add-btn").addEventListener("click", addHabit);
+  document.getElementById("new-habit-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") addHabit();
+  });
+
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+    });
+  });
+
+  // ---- 初期化 ----
+  render();
+</script>
+</body>
+</html>
