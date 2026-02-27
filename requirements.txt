@@ -1,0 +1,3 @@
+# このアプリは Python 標準ライブラリのみを使用しています
+# Python 3.7+ が必要です
+# No external dependencies required
